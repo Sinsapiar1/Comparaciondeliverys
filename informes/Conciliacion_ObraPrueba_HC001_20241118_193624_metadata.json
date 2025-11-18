@@ -1,0 +1,9 @@
+{
+  "fecha_generacion": "2024-11-18T19:36:24.123456",
+  "nombre_archivo": "Conciliacion_ObraPrueba_HC001_20241118_193624.xlsx",
+  "ruta_archivo": "informes/Conciliacion_ObraPrueba_HC001_20241118_193624.xlsx",
+  "obra": "Obra de Prueba",
+  "hoja_carga": "HC-001",
+  "correo_destino": "raul.pivet@gmail.com",
+  "enviar_correo": true
+}
