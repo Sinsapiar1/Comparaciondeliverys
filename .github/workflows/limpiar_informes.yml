@@ -1,0 +1,57 @@
+name: Limpiar Informes Antiguos
+
+on:
+  # Se ejecuta cada día a las 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # También se puede ejecutar manualmente
+  workflow_dispatch:
+  
+  # Se ejecuta cuando hay cambios en la carpeta informes
+  push:
+    paths:
+      - 'informes/**'
+
+jobs:
+  limpiar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Eliminar informes mayores a 10 días
+        run: |
+          echo "🧹 Buscando informes antiguos..."
+          
+          # Encontrar y eliminar archivos mayores a 10 días en /informes/
+          find informes -type f \( -name "*.xlsx" -o -name "*.json" -o -name "*.html" \) -mtime +10 -exec rm -v {} \;
+          
+          # Contar archivos restantes
+          total_archivos=$(find informes -type f \( -name "*.xlsx" -o -name "*.json" -o -name "*.html" \) | wc -l)
+          echo "📊 Total de archivos restantes: $total_archivos"
+          
+          # Crear reporte
+          echo "## Reporte de Limpieza de Informes 🧹" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Limpieza completada" >> $GITHUB_STEP_SUMMARY
+          echo "- 📁 Archivos restantes: $total_archivos" >> $GITHUB_STEP_SUMMARY
+          echo "- 🗓️ Fecha: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Commit cambios si hay archivos eliminados
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Verificar si hay cambios
+          if [[ -n $(git status -s) ]]; then
+            git add informes/
+            git commit -m "🧹 Limpieza automática: eliminar informes mayores a 10 días"
+            git push
+            echo "✅ Cambios commiteados y pusheados"
+          else
+            echo "ℹ️ No hay archivos para eliminar"
+          fi

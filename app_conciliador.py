@@ -7,7 +7,9 @@ import numpy as np
 import io
 import sys
 import os
+import json
 from datetime import datetime
+from pathlib import Path
 
 # Configuración para el ejecutable
 if hasattr(sys, '_MEIPASS'):
@@ -177,7 +179,7 @@ def crear_excel_profesional(df, kpis, metadata):
 
 def generar_nombre_archivo(metadata):
     """Genera un nombre de archivo basado en obra, hoja de carga y fecha"""
-    fecha_actual = datetime.now().strftime("%Y%m%d")
+    fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     nombre_limpio = metadata['nombre'].replace(' ', '_').replace('/', '-').replace('\\', '-')
     hoja_limpia = metadata['hoja_carga'].replace(' ', '_').replace('/', '-').replace('\\', '-')
@@ -185,6 +187,196 @@ def generar_nombre_archivo(metadata):
     nombre_archivo = f"Conciliacion_{nombre_limpio}_{hoja_limpia}_{fecha_actual}.xlsx"
     
     return nombre_archivo
+
+def leer_correos_permitidos():
+    """Lee la lista de correos autorizados desde el archivo correos_destino.txt"""
+    correos = []
+    archivo_correos = Path('correos_destino.txt')
+    
+    try:
+        if archivo_correos.exists():
+            with open(archivo_correos, 'r', encoding='utf-8') as f:
+                for linea in f:
+                    linea = linea.strip()
+                    if linea and not linea.startswith('#') and '@' in linea:
+                        correos.append(linea)
+    except Exception as e:
+        st.warning(f"No se pudo leer el archivo de correos: {e}")
+    
+    return correos
+
+def guardar_informe_en_repositorio(excel_bytes, nombre_archivo, metadata, correo_destino=None):
+    """Guarda el informe Excel y metadata en la carpeta /informes/"""
+    try:
+        # Crear carpeta si no existe
+        carpeta_informes = Path('informes')
+        carpeta_informes.mkdir(exist_ok=True)
+        
+        # Guardar archivo Excel
+        ruta_excel = carpeta_informes / nombre_archivo
+        with open(ruta_excel, 'wb') as f:
+            f.write(excel_bytes)
+        
+        # Crear metadata JSON
+        metadata_completa = {
+            'fecha_generacion': datetime.now().isoformat(),
+            'nombre_archivo': nombre_archivo,
+            'ruta_archivo': f'informes/{nombre_archivo}',
+            'obra': metadata['nombre'],
+            'hoja_carga': metadata['hoja_carga'],
+            'correo_destino': correo_destino,
+            'enviar_correo': correo_destino is not None
+        }
+        
+        # Guardar metadata
+        nombre_metadata = nombre_archivo.replace('.xlsx', '_metadata.json')
+        ruta_metadata = carpeta_informes / nombre_metadata
+        with open(ruta_metadata, 'w', encoding='utf-8') as f:
+            json.dump(metadata_completa, f, indent=2, ensure_ascii=False)
+        
+        return True, ruta_excel, ruta_metadata
+    
+    except Exception as e:
+        return False, None, None
+
+def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
+    """Genera HTML profesional compatible con Outlook para el cuerpo del correo"""
+    # Colores corporativos y estilos inline (Outlook solo soporta inline CSS)
+    html = f"""
+    <html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4;">
+        <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            
+            <!-- Encabezado -->
+            <div style="background: linear-gradient(135deg, #1F497D 0%, #4F81BD 100%); padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">📊 Informe de Conciliación de Carga</h1>
+            </div>
+            
+            <!-- Información de la Obra -->
+            <div style="padding: 20px 30px; background-color: #f8f9fa; border-bottom: 3px solid #4F81BD;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 10px; width: 50%;">
+                            <strong style="color: #1F497D; font-size: 14px;">🏗️ Obra:</strong><br>
+                            <span style="font-size: 18px; color: #333; font-weight: bold;">{metadata['nombre']}</span>
+                        </td>
+                        <td style="padding: 10px; width: 50%; text-align: right;">
+                            <strong style="color: #1F497D; font-size: 14px;">📋 Hoja de Carga:</strong><br>
+                            <span style="font-size: 18px; color: #333; font-weight: bold;">{metadata['hoja_carga']}</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- KPIs -->
+            <div style="padding: 30px;">
+                <h2 style="color: #1F497D; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #4F81BD; padding-bottom: 10px;">📈 Resumen Ejecutivo</h2>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width: 50%; padding: 15px; background-color: #E8F0FE; border-radius: 8px; margin-right: 10px;">
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Unidades Solicitadas</div>
+                                <div style="color: #1F497D; font-size: 32px; font-weight: bold;">{kpis['total_solicitado']:,.0f}</div>
+                            </div>
+                        </td>
+                        <td style="width: 50%; padding: 15px; background-color: #E8F5E9; border-radius: 8px;">
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Unidades Cargadas</div>
+                                <div style="color: #2E7D32; font-size: 32px; font-weight: bold;">{kpis['total_cargado']:,.0f}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 50%; padding: 15px; background-color: #FFF8E1; border-radius: 8px; margin-right: 10px;">
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 13px; margin-bottom: 5px;">% Cumplimiento General</div>
+                                <div style="color: #F57C00; font-size: 32px; font-weight: bold;">{kpis['cumplimiento_general']:.1%}</div>
+                            </div>
+                        </td>
+                        <td style="width: 50%; padding: 15px; background-color: #FFEBEE; border-radius: 8px;">
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Artículos Pendientes</div>
+                                <div style="color: #C62828; font-size: 32px; font-weight: bold;">{kpis['articulos_pendientes']}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- Tabla de Detalle -->
+            <div style="padding: 0 30px 30px 30px;">
+                <h2 style="color: #1F497D; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #4F81BD; padding-bottom: 10px;">📦 Detalle de Artículos</h2>
+                
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background-color: #1F497D;">
+                                <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Código</th>
+                                <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Producto</th>
+                                <th style="padding: 12px 8px; text-align: center; color: white; border: 1px solid #ddd;">Estado</th>
+                                <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Solicitado</th>
+                                <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Cargado</th>
+                                <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+"""
+    
+    # Agregar filas de la tabla
+    for idx, row in informe_df.iterrows():
+        # Colores según estado (compatibles con Outlook)
+        if row['Estado'] == 'Pendiente':
+            bg_color = '#FFCDD2'
+            text_color = '#B71C1C'
+        elif row['Estado'] == 'Incompleto':
+            bg_color = '#FFF9C4'
+            text_color = '#F57F17'
+        elif row['Estado'] == 'Completo':
+            bg_color = '#C8E6C9'
+            text_color = '#1B5E20'
+        elif row['Estado'] in ['Excedente', 'No Solicitado']:
+            bg_color = '#BBDEFB'
+            text_color = '#0D47A1'
+        else:
+            bg_color = '#FFFFFF'
+            text_color = '#000000'
+        
+        html += f"""
+                            <tr style="background-color: {bg_color};">
+                                <td style="padding: 10px 8px; border: 1px solid #ddd; color: {text_color};">{row['Código de artículo']}</td>
+                                <td style="padding: 10px 8px; border: 1px solid #ddd; color: {text_color};">{row['Nombre del producto']}</td>
+                                <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: {text_color};">{row['Estado']}</td>
+                                <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Cantidad Solicitada']):,}</td>
+                                <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Cantidad_Cargada']):,}</td>
+                                <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Diferencia']):,}</td>
+                            </tr>
+"""
+    
+    html += """
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Pie de página -->
+            <div style="padding: 20px 30px; background-color: #f8f9fa; border-top: 3px solid #4F81BD; text-align: center;">
+                <p style="margin: 0; color: #666; font-size: 12px;">📧 Informe generado automáticamente</p>
+                <p style="margin: 5px 0 0 0; color: #999; font-size: 11px;">Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            </div>
+            
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
 
 def main():
     st.set_page_config(
@@ -203,6 +395,25 @@ def main():
     with col2:
         st.header("2. Pegar Tabla del Pedido Cargado")
         texto_cargado = st.text_area("Datos del pedido cargado:", height=300, key="cargado")
+
+    # Opciones de envío de correo (colapsable)
+    with st.expander("📧 Opciones de Envío por Correo (Opcional)", expanded=False):
+        enviar_correo = st.checkbox("Preparar informe para envío automático por correo", value=False)
+        
+        correo_seleccionado = None
+        if enviar_correo:
+            correos_disponibles = leer_correos_permitidos()
+            
+            if correos_disponibles:
+                correo_seleccionado = st.selectbox(
+                    "Seleccionar destinatario:",
+                    options=correos_disponibles,
+                    help="Correos autorizados desde correos_destino.txt"
+                )
+                st.info(f"📬 El informe se preparará para envío a: **{correo_seleccionado}**")
+            else:
+                st.warning("⚠️ No hay correos configurados. Edita el archivo `correos_destino.txt` para agregar destinatarios.")
+                enviar_correo = False
 
     if st.button("Generar Informe de Conciliación", type="primary"):
         if texto_solicitud and texto_cargado:
@@ -254,24 +465,62 @@ def main():
                 excel_bytes = crear_excel_profesional(informe_final, kpis, metadata)
                 nombre_archivo = generar_nombre_archivo(metadata)
                 
-                # Solo botón de descarga - 100% funcional
+                # Guardar en repositorio
+                correo_para_metadata = correo_seleccionado if enviar_correo else None
+                exito, ruta_excel, ruta_metadata = guardar_informe_en_repositorio(
+                    excel_bytes, 
+                    nombre_archivo, 
+                    metadata,
+                    correo_para_metadata
+                )
+                
+                if exito:
+                    st.success(f"✅ Informe guardado en repositorio: `{ruta_excel}`")
+                    
+                    # Generar HTML para el correo
+                    if enviar_correo and correo_seleccionado:
+                        html_correo = generar_cuerpo_html_outlook(informe_final, kpis, metadata)
+                        
+                        # Guardar HTML también
+                        nombre_html = nombre_archivo.replace('.xlsx', '_email.html')
+                        ruta_html = Path('informes') / nombre_html
+                        with open(ruta_html, 'w', encoding='utf-8') as f:
+                            f.write(html_correo)
+                        
+                        st.success(f"📧 Preparado para envío a: **{correo_seleccionado}**")
+                        st.info("💡 **Power Automate** detectará automáticamente este informe y lo enviará por correo.")
+                    
+                else:
+                    st.error("❌ Error al guardar el informe en el repositorio")
+                
+                # Botón de descarga
                 st.download_button(
-                    label="Descargar Informe en Excel", 
+                    label="⬇️ Descargar Informe en Excel", 
                     data=excel_bytes,
                     file_name=nombre_archivo,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 
-                st.caption(f"Archivo Excel: {nombre_archivo}")
+                st.caption(f"📄 Archivo: {nombre_archivo}")
                 
-                # Información adicional para el usuario
-                st.info("""
-                **Informe generado exitosamente**
-                - El archivo Excel incluye toda la información de la obra y hoja de carga
-                - Contiene el resumen ejecutivo con todos los KPIs
-                - Tabla detallada con formato condicional por colores
-                - Listo para compartir o archivar
-                """)
+                # Información adicional
+                with st.expander("ℹ️ Información del Informe", expanded=False):
+                    st.markdown("""
+                    **Informe generado exitosamente**
+                    - ✅ Archivo Excel con formato profesional
+                    - ✅ Guardado automáticamente en `/informes/`
+                    - ✅ Resumen ejecutivo con KPIs
+                    - ✅ Tabla detallada con colores por estado
+                    - ✅ Metadata JSON para integración
+                    """)
+                    
+                    if enviar_correo:
+                        st.markdown("""
+                        **Configurado para envío por correo**
+                        - 📧 Cuerpo HTML profesional generado
+                        - 📎 Excel adjunto preparado
+                        - 🤖 Power Automate procesará automáticamente
+                        """)
                 
         else:
             st.warning("Por favor, pega los datos en ambas tablas antes de generar el informe.")

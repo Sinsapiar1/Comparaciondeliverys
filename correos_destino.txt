@@ -1,0 +1,7 @@
+# Lista de correos corporativos autorizados
+# Agrega un correo por línea (las líneas que empiezan con # son ignoradas)
+# Ejemplo:
+# juan.perez@empresa.com
+# maria.lopez@empresa.com
+
+ejemplo@empresa.com

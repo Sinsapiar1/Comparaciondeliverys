@@ -1,0 +1,102 @@
+name: Procesar Nuevos Informes
+
+on:
+  # Se ejecuta cuando hay cambios en la carpeta informes
+  push:
+    paths:
+      - 'informes/**'
+      - '!informes/.gitkeep'
+
+jobs:
+  listar-informes-pendientes:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+      
+      - name: Buscar informes pendientes de envío
+        id: buscar_informes
+        run: |
+          echo "📧 Buscando informes con correo configurado..."
+          
+          informes_pendientes=""
+          count=0
+          
+          # Buscar todos los archivos metadata.json
+          for metadata in informes/*_metadata.json; do
+            if [ -f "$metadata" ]; then
+              # Verificar si tiene correo_destino configurado
+              correo=$(jq -r '.correo_destino' "$metadata" 2>/dev/null)
+              enviar=$(jq -r '.enviar_correo' "$metadata" 2>/dev/null)
+              
+              if [ "$enviar" = "true" ] && [ "$correo" != "null" ] && [ "$correo" != "" ]; then
+                nombre_archivo=$(jq -r '.nombre_archivo' "$metadata")
+                obra=$(jq -r '.obra' "$metadata")
+                hoja=$(jq -r '.hoja_carga' "$metadata")
+                
+                echo "✅ Informe pendiente encontrado:"
+                echo "   - Archivo: $nombre_archivo"
+                echo "   - Obra: $obra"
+                echo "   - Hoja de carga: $hoja"
+                echo "   - Destinatario: $correo"
+                echo ""
+                
+                informes_pendientes="${informes_pendientes}${metadata}|"
+                count=$((count + 1))
+              fi
+            fi
+          done
+          
+          echo "count=$count" >> $GITHUB_OUTPUT
+          echo "informes=$informes_pendientes" >> $GITHUB_OUTPUT
+          
+          # Crear reporte en el summary
+          echo "## Informes Listos para Envío 📧" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $count -eq 0 ]; then
+            echo "ℹ️ No hay informes pendientes de envío" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Total de informes pendientes: **$count**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Detalles:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            for metadata in informes/*_metadata.json; do
+              if [ -f "$metadata" ]; then
+                enviar=$(jq -r '.enviar_correo' "$metadata" 2>/dev/null)
+                if [ "$enviar" = "true" ]; then
+                  nombre=$(jq -r '.nombre_archivo' "$metadata")
+                  obra=$(jq -r '.obra' "$metadata")
+                  correo=$(jq -r '.correo_destino' "$metadata")
+                  fecha=$(jq -r '.fecha_generacion' "$metadata")
+                  
+                  echo "- **$nombre**" >> $GITHUB_STEP_SUMMARY
+                  echo "  - Obra: $obra" >> $GITHUB_STEP_SUMMARY
+                  echo "  - Destinatario: $correo" >> $GITHUB_STEP_SUMMARY
+                  echo "  - Fecha: $fecha" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                fi
+              fi
+            done
+          fi
+          
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Power Automate** puede conectarse a este repositorio para procesar estos informes" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Crear artefacto con informes pendientes
+        if: steps.buscar_informes.outputs.count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-pendientes-${{ github.sha }}
+          path: |
+            informes/*.xlsx
+            informes/*_metadata.json
+            informes/*_email.html
+          retention-days: 10
+          if-no-files-found: ignore
+      
+      - name: Comentar en PR si existe
+        if: github.event_name == 'push' && steps.buscar_informes.outputs.count > 0
+        run: |
+          echo "✅ Workflow completado - ${{ steps.buscar_informes.outputs.count }} informe(s) listo(s)"
