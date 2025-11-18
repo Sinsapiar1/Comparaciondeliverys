@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Ejemplo - Informe de Conciliación</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4;">
+    <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        
+        <!-- Encabezado -->
+        <div style="background: linear-gradient(135deg, #1F497D 0%, #4F81BD 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">📊 Informe de Conciliación de Carga</h1>
+        </div>
+        
+        <!-- Información de la Obra -->
+        <div style="padding: 20px 30px; background-color: #f8f9fa; border-bottom: 3px solid #4F81BD;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px; width: 50%;">
+                        <strong style="color: #1F497D; font-size: 14px;">🏗️ Obra:</strong><br>
+                        <span style="font-size: 18px; color: #333; font-weight: bold;">Construcción Centro Comercial Plaza Mayor</span>
+                    </td>
+                    <td style="padding: 10px; width: 50%; text-align: right;">
+                        <strong style="color: #1F497D; font-size: 14px;">📋 Hoja de Carga:</strong><br>
+                        <span style="font-size: 18px; color: #333; font-weight: bold;">HC-2024-1234</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- KPIs -->
+        <div style="padding: 30px;">
+            <h2 style="color: #1F497D; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #4F81BD; padding-bottom: 10px;">📈 Resumen Ejecutivo</h2>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr>
+                    <td style="width: 50%; padding: 15px; background-color: #E8F0FE; border-radius: 8px; margin-right: 10px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Unidades Solicitadas</div>
+                            <div style="color: #1F497D; font-size: 32px; font-weight: bold;">15,420</div>
+                        </div>
+                    </td>
+                    <td style="width: 50%; padding: 15px; background-color: #E8F5E9; border-radius: 8px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Unidades Cargadas</div>
+                            <div style="color: #2E7D32; font-size: 32px; font-weight: bold;">14,235</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 50%; padding: 15px; background-color: #FFF8E1; border-radius: 8px; margin-right: 10px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;">% Cumplimiento General</div>
+                            <div style="color: #F57C00; font-size: 32px; font-weight: bold;">92.3%</div>
+                        </div>
+                    </td>
+                    <td style="width: 50%; padding: 15px; background-color: #FFEBEE; border-radius: 8px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;">Artículos Pendientes</div>
+                            <div style="color: #C62828; font-size: 32px; font-weight: bold;">3</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Tabla de Detalle -->
+        <div style="padding: 0 30px 30px 30px;">
+            <h2 style="color: #1F497D; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #4F81BD; padding-bottom: 10px;">📦 Detalle de Artículos</h2>
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background-color: #1F497D;">
+                            <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Código</th>
+                            <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Producto</th>
+                            <th style="padding: 12px 8px; text-align: center; color: white; border: 1px solid #ddd;">Estado</th>
+                            <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Solicitado</th>
+                            <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Cargado</th>
+                            <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Diferencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Completo -->
+                        <tr style="background-color: #C8E6C9;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #1B5E20;">ART-001</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #1B5E20;">Cemento Portland Tipo I 42.5kg</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #1B5E20;">Completo</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">5,000</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">5,000</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">0</td>
+                        </tr>
+                        
+                        <!-- Incompleto -->
+                        <tr style="background-color: #FFF9C4;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #F57F17;">ART-002</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #F57F17;">Varilla de Acero 1/2" 6m</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #F57F17;">Incompleto</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">3,500</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">3,200</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">-300</td>
+                        </tr>
+                        
+                        <!-- Pendiente -->
+                        <tr style="background-color: #FFCDD2;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #B71C1C;">ART-003</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #B71C1C;">Bloque de Concreto 15x20x40cm</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #B71C1C;">Pendiente</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #B71C1C;">2,500</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #B71C1C;">0</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #B71C1C;">-2,500</td>
+                        </tr>
+                        
+                        <!-- Completo -->
+                        <tr style="background-color: #C8E6C9;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #1B5E20;">ART-004</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #1B5E20;">Arena Gruesa m³</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #1B5E20;">Completo</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">1,200</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">1,200</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #1B5E20;">0</td>
+                        </tr>
+                        
+                        <!-- Excedente -->
+                        <tr style="background-color: #BBDEFB;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #0D47A1;">ART-005</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #0D47A1;">Alambre Recocido #18</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #0D47A1;">Excedente</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #0D47A1;">2,500</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #0D47A1;">2,835</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #0D47A1;">+335</td>
+                        </tr>
+                        
+                        <!-- Incompleto -->
+                        <tr style="background-color: #FFF9C4;">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #F57F17;">ART-006</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; color: #F57F17;">Grava 3/4" m³</td>
+                            <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: #F57F17;">Incompleto</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">720</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">500</td>
+                            <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: #F57F17;">-220</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pie de página -->
+        <div style="padding: 20px 30px; background-color: #f8f9fa; border-top: 3px solid #4F81BD; text-align: center;">
+            <p style="margin: 0; color: #666; font-size: 12px;">📧 Informe generado automáticamente</p>
+            <p style="margin: 5px 0 0 0; color: #999; font-size: 11px;">Fecha: 18/11/2024 15:30</p>
+        </div>
+        
+    </div>
+    
+    <div style="max-width: 800px; margin: 20px auto; padding: 15px; background-color: #E3F2FD; border-left: 4px solid #1976D2; border-radius: 4px;">
+        <p style="margin: 0; color: #1565C0; font-size: 13px;">
+            <strong>💡 Nota:</strong> Este es un ejemplo de cómo se verá el correo que recibirán los destinatarios. 
+            Los datos reales dependerán de cada informe generado. El HTML es 100% compatible con Outlook.
+        </p>
+    </div>
+</body>
+</html>
