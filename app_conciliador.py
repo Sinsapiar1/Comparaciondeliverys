@@ -465,20 +465,19 @@ def main():
                 excel_bytes = crear_excel_profesional(informe_final, kpis, metadata)
                 nombre_archivo = generar_nombre_archivo(metadata)
                 
-                # Guardar en repositorio
-                correo_para_metadata = correo_seleccionado if enviar_correo else None
-                exito, ruta_excel, ruta_metadata = guardar_informe_en_repositorio(
-                    excel_bytes, 
-                    nombre_archivo, 
-                    metadata,
-                    correo_para_metadata
-                )
-                
-                if exito:
-                    st.success(f"✅ Informe guardado en repositorio: `{ruta_excel}`")
+                # Guardar en repositorio SOLO si se marcó la opción de correo
+                if enviar_correo and correo_seleccionado:
+                    exito, ruta_excel, ruta_metadata = guardar_informe_en_repositorio(
+                        excel_bytes, 
+                        nombre_archivo, 
+                        metadata,
+                        correo_seleccionado
+                    )
                     
-                    # Generar HTML para el correo
-                    if enviar_correo and correo_seleccionado:
+                    if exito:
+                        st.success(f"✅ Informe guardado en repositorio: `{ruta_excel}`")
+                        
+                        # Generar HTML para el correo
                         html_correo = generar_cuerpo_html_outlook(informe_final, kpis, metadata)
                         
                         # Guardar HTML también
@@ -489,9 +488,11 @@ def main():
                         
                         st.success(f"📧 Preparado para envío a: **{correo_seleccionado}**")
                         st.info("💡 **Power Automate** detectará automáticamente este informe y lo enviará por correo.")
-                    
+                    else:
+                        st.error("❌ Error al guardar el informe en el repositorio")
                 else:
-                    st.error("❌ Error al guardar el informe en el repositorio")
+                    # Solo descarga, sin guardar en repositorio
+                    st.info("ℹ️ Informe generado solo para descarga (no se guardó en repositorio)")
                 
                 # Botón de descarga
                 st.download_button(
@@ -508,18 +509,25 @@ def main():
                     st.markdown("""
                     **Informe generado exitosamente**
                     - ✅ Archivo Excel con formato profesional
-                    - ✅ Guardado automáticamente en `/informes/`
                     - ✅ Resumen ejecutivo con KPIs
                     - ✅ Tabla detallada con colores por estado
-                    - ✅ Metadata JSON para integración
+                    - ✅ Disponible para descarga inmediata
                     """)
                     
-                    if enviar_correo:
+                    if enviar_correo and correo_seleccionado:
                         st.markdown("""
                         **Configurado para envío por correo**
                         - 📧 Cuerpo HTML profesional generado
                         - 📎 Excel adjunto preparado
+                        - 💾 Guardado en `/informes/` del repositorio
                         - 🤖 Power Automate procesará automáticamente
+                        """)
+                    else:
+                        st.markdown("""
+                        **Modo descarga únicamente**
+                        - 📥 Solo descarga local
+                        - 🚫 No se guardó en repositorio
+                        - 🚫 No se enviará por correo
                         """)
                 
         else:
