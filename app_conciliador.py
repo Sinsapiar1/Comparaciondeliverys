@@ -8,6 +8,7 @@ import io
 import sys
 import os
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,31 @@ if hasattr(sys, '_MEIPASS'):
     bundle_dir = sys._MEIPASS
 else:
     bundle_dir = os.path.dirname(os.path.abspath(__file__))
+
+def normalizar_codigo(valor):
+    """Normaliza codigos para evitar mismatches (ej: 67284.0 -> 67284)."""
+    if pd.isna(valor):
+        return ''
+    texto = str(valor).strip()
+    if not texto:
+        return ''
+    if texto.lower() in {'nan', 'none'}:
+        return ''
+    if re.fullmatch(r'\d+\.0+', texto):
+        return texto.split('.')[0]
+    return texto
+
+def formatear_cantidad(valor):
+    """Convierte cantidades a texto legible sin decimales innecesarios."""
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return str(valor)
+    if np.isnan(numero):
+        return "0"
+    if numero.is_integer():
+        return f"{int(numero):,}"
+    return f"{numero:,.2f}".rstrip('0').rstrip('.')
 
 def extraer_metadatos_carga(cargado_df):
     """Extrae el nombre de la obra y hoja de carga de los datos"""
@@ -48,23 +74,54 @@ def procesar_datos(texto_solicitud, texto_cargado):
         solicitud_df['Cantidad'] = pd.to_numeric(solicitud_df['Cantidad'], errors='coerce').fillna(0)
         cargado_df['Cantidad'] = pd.to_numeric(cargado_df['Cantidad'], errors='coerce').fillna(0)
         
-        solicitud_df['Código de artículo'] = solicitud_df['Código de artículo'].astype(str).str.strip()
-        cargado_df['Código de artículo'] = cargado_df['Código de artículo'].astype(str).str.strip()
+        solicitud_df['Código de artículo'] = solicitud_df['Código de artículo'].apply(normalizar_codigo)
+        cargado_df['Código de artículo'] = cargado_df['Código de artículo'].apply(normalizar_codigo)
+
+        if 'Artículo original' in cargado_df.columns:
+            cargado_df['Artículo original'] = cargado_df['Artículo original'].apply(normalizar_codigo)
         
         solicitud_final = solicitud_df.groupby(['Código de artículo', 'Nombre del producto'])['Cantidad'].sum().reset_index()
         solicitud_final = solicitud_final.rename(columns={'Cantidad': 'Cantidad Solicitada'})
 
-        cargado_filtrado_df = cargado_df[cargado_df['Estado de la emisión'].str.strip() == 'Seleccionado'].copy()
+        cargado_filtrado_df = cargado_df[cargado_df['Estado de la emisión'].astype(str).str.strip() == 'Seleccionado'].copy()
         
-        cargado_filtrado_df['Código de artículo'] = cargado_filtrado_df['Código de artículo'].astype(str).str.strip()
+        cargado_filtrado_df['Código de artículo'] = cargado_filtrado_df['Código de artículo'].apply(normalizar_codigo)
+
+        sustituciones = {}
+        sustituciones_totales = {}
+
+        if 'Artículo original' in cargado_filtrado_df.columns:
+            cargado_filtrado_df['Artículo original'] = cargado_filtrado_df['Artículo original'].apply(normalizar_codigo)
+
+            sustitutos_df = cargado_filtrado_df[
+                (cargado_filtrado_df['Artículo original'] != '') &
+                (cargado_filtrado_df['Artículo original'] != '0') &
+                (cargado_filtrado_df['Artículo original'] != cargado_filtrado_df['Código de artículo'])
+            ].copy()
+
+            if not sustitutos_df.empty:
+                resumen_sustituciones = (
+                    sustitutos_df.groupby(['Artículo original', 'Código de artículo'])['Cantidad']
+                    .sum()
+                    .reset_index()
+                )
+                sustituciones_totales = (
+                    resumen_sustituciones.groupby('Artículo original')['Cantidad']
+                    .sum()
+                    .to_dict()
+                )
+                for original, grupo in resumen_sustituciones.groupby('Artículo original'):
+                    detalles = []
+                    for _, fila in grupo.iterrows():
+                        cantidad_txt = formatear_cantidad(fila['Cantidad'])
+                        detalles.append(f"{fila['Código de artículo']} ({cantidad_txt})")
+                    sustituciones[original] = ", ".join(detalles)
         
         if 'Artículo original' in cargado_filtrado_df.columns:
-            cargado_filtrado_df['Artículo original'] = cargado_filtrado_df['Artículo original'].astype(str).str.strip()
+            cargado_filtrado_df['Artículo original'] = cargado_filtrado_df['Artículo original'].apply(normalizar_codigo)
             
             cargado_filtrado_df['Código de Agrupación'] = np.where(
-                (cargado_filtrado_df['Artículo original'].notna()) & 
-                (cargado_filtrado_df['Artículo original'] != '') & 
-                (cargado_filtrado_df['Artículo original'] != 'nan') &
+                (cargado_filtrado_df['Artículo original'] != '') &
                 (cargado_filtrado_df['Artículo original'] != '0'),
                 cargado_filtrado_df['Artículo original'],
                 cargado_filtrado_df['Código de artículo']
@@ -86,6 +143,7 @@ def procesar_datos(texto_solicitud, texto_cargado):
         )
         
         informe_df['Código de artículo'] = informe_df['Código de artículo'].fillna(informe_df['Código de Agrupación'])
+        informe_df['Código de artículo'] = informe_df['Código de artículo'].apply(normalizar_codigo)
 
         if informe_df['Nombre del producto'].isna().any():
             name_map = solicitud_final.drop_duplicates('Código de artículo').set_index('Código de artículo')['Nombre del producto']
@@ -100,6 +158,19 @@ def procesar_datos(texto_solicitud, texto_cargado):
         informe_df['Cantidad_Cargada'] = informe_df['Cantidad_Cargada'].fillna(0).astype(int)
         informe_df['Pallets'] = informe_df['Pallets'].fillna('---')
         informe_df['Diferencia'] = informe_df['Cantidad_Cargada'] - informe_df['Cantidad Solicitada']
+
+        def resumen_sustitucion(row):
+            codigo = row['Código de artículo']
+            detalle = sustituciones.get(codigo)
+            if not detalle:
+                return '---'
+            total_sustituido = sustituciones_totales.get(codigo, 0)
+            if row['Cantidad Solicitada'] > 0:
+                estado = 'Parcial' if total_sustituido < row['Cantidad Solicitada'] else 'Total'
+                return f"{estado}: {detalle}"
+            return detalle
+
+        informe_df['Sustituido por'] = informe_df.apply(resumen_sustitucion, axis=1)
         
         informe_df['% Cumplimiento'] = informe_df.apply(
             lambda row: (row['Cantidad_Cargada'] / row['Cantidad Solicitada']) if row['Cantidad Solicitada'] > 0 else 0, axis=1)
@@ -114,7 +185,7 @@ def procesar_datos(texto_solicitud, texto_cargado):
         choices = ['Pendiente', 'Incompleto', 'Excedente', 'No Solicitado', 'Completo']
         informe_df['Estado'] = np.select(conditions, choices, default='Revisar')
         
-        informe_df = informe_df[['Código de artículo', 'Nombre del producto', 'Estado', 'Cantidad Solicitada', 'Cantidad_Cargada', 'Diferencia', '% Cumplimiento', 'Pallets']]
+        informe_df = informe_df[['Código de artículo', 'Nombre del producto', 'Estado', 'Sustituido por', 'Cantidad Solicitada', 'Cantidad_Cargada', 'Diferencia', '% Cumplimiento', 'Pallets']]
         
         return informe_df, metadata
 
@@ -149,14 +220,14 @@ def crear_excel_profesional(df, kpis, metadata):
     completo_format = workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'})
     excedente_format = workbook.add_format({'bg_color': '#D9E1F2', 'font_color': '#2F5496'})
 
-    worksheet.merge_range('B2:G2', 'Informe de Conciliación de Carga', title_format)
+    worksheet.merge_range('B2:I2', 'Informe de Conciliación de Carga', title_format)
     
     worksheet.write('B3', 'Obra:', metadata_format)
     worksheet.write('C3', metadata['nombre'], metadata_format)
     worksheet.write('E3', 'Hoja de Carga:', metadata_format)
     worksheet.write('F3', metadata['hoja_carga'], metadata_format)
     
-    worksheet.merge_range('B5:G5', 'Resumen Ejecutivo', subtitle_format)
+    worksheet.merge_range('B5:I5', 'Resumen Ejecutivo', subtitle_format)
     worksheet.write('B6', 'Unidades Solicitadas:', kpi_format); worksheet.write('C6', kpis['total_solicitado'], kpi_value_format)
     worksheet.write('B7', 'Unidades Cargadas:', kpi_format); worksheet.write('C7', kpis['total_cargado'], kpi_value_format)
     worksheet.write('E6', '% Cumplimiento General:', kpi_format); worksheet.write('F6', kpis['cumplimiento_general'], percent_format)
@@ -166,8 +237,9 @@ def crear_excel_profesional(df, kpis, metadata):
         worksheet.write(10, col_num, value, header_format)
     
     worksheet.set_column('A:A', 15); worksheet.set_column('B:B', 50)
-    worksheet.set_column('C:C', 15); worksheet.set_column('D:F', 20)
-    worksheet.set_column('G:G', 18, percent_format); worksheet.set_column('H:H', 40)
+    worksheet.set_column('C:C', 15); worksheet.set_column('D:D', 30)
+    worksheet.set_column('E:G', 20); worksheet.set_column('H:H', 18, percent_format)
+    worksheet.set_column('I:I', 40)
     
     worksheet.conditional_format('C12:C1000', {'type': 'cell', 'criteria': 'equal to', 'value': '"Pendiente"', 'format': pendiente_format})
     worksheet.conditional_format('C12:C1000', {'type': 'cell', 'criteria': 'equal to', 'value': '"Incompleto"', 'format': incompleto_format})
@@ -321,6 +393,7 @@ def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
                                 <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Código</th>
                                 <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Producto</th>
                                 <th style="padding: 12px 8px; text-align: center; color: white; border: 1px solid #ddd;">Estado</th>
+                                <th style="padding: 12px 8px; text-align: left; color: white; border: 1px solid #ddd;">Sustituido por</th>
                                 <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Solicitado</th>
                                 <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Cargado</th>
                                 <th style="padding: 12px 8px; text-align: right; color: white; border: 1px solid #ddd;">Diferencia</th>
@@ -353,6 +426,7 @@ def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
                                 <td style="padding: 10px 8px; border: 1px solid #ddd; color: {text_color};">{row['Código de artículo']}</td>
                                 <td style="padding: 10px 8px; border: 1px solid #ddd; color: {text_color};">{row['Nombre del producto']}</td>
                                 <td style="padding: 10px 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: {text_color};">{row['Estado']}</td>
+                                <td style="padding: 10px 8px; text-align: left; border: 1px solid #ddd; color: {text_color};">{row['Sustituido por']}</td>
                                 <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Cantidad Solicitada']):,}</td>
                                 <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Cantidad_Cargada']):,}</td>
                                 <td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; color: {text_color};">{int(row['Diferencia']):,}</td>
@@ -377,6 +451,33 @@ def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
     """
     
     return html
+
+def generar_resumen_whatsapp(informe_df, kpis, metadata):
+    """Genera un resumen simple para copiar y pegar en WhatsApp."""
+    fecha = datetime.now().strftime('%d/%m/%Y')
+    lineas = [
+        f"Obra: {metadata['nombre']}",
+        f"Orden: {metadata['hoja_carga']}",
+        f"Fecha: {fecha}",
+        "",
+        "Productos:"
+    ]
+
+    productos_df = informe_df[informe_df['Cantidad Solicitada'] > 0].copy()
+    for _, row in productos_df.iterrows():
+        codigo = row['Código de artículo']
+        nombre = row['Nombre del producto']
+        solicitado = formatear_cantidad(row['Cantidad Solicitada'])
+        cargado = formatear_cantidad(row['Cantidad_Cargada'])
+        alerta = " ⚠️" if row['Diferencia'] != 0 else ""
+        lineas.append(f"- {codigo} {nombre}: se pidio {solicitado} se envian {cargado}{alerta}")
+
+    lineas.append("")
+    lineas.append(f"Totalidad de envio: {kpis['cumplimiento_general']:.1%}")
+    lineas.append("")
+    lineas.append("ATTE, sistema de delivery")
+
+    return "\n".join(lineas)
 
 def main():
     st.set_page_config(
@@ -503,6 +604,11 @@ def main():
                 )
                 
                 st.caption(f"📄 Archivo: {nombre_archivo}")
+
+                resumen_whatsapp = generar_resumen_whatsapp(informe_final, kpis, metadata)
+                with st.expander("📲 Resumen para WhatsApp", expanded=False):
+                    st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
+                    st.caption("Copia y pega este resumen en WhatsApp.")
                 
                 # Información adicional
                 with st.expander("ℹ️ Información del Informe", expanded=False):
