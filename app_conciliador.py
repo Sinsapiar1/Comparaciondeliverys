@@ -9,6 +9,7 @@ import sys
 import os
 import json
 import re
+import html
 import unicodedata
 from urllib.parse import quote
 import streamlit.components.v1 as components
@@ -639,11 +640,24 @@ def main():
                     mensaje_json = json.dumps(mensaje_normalizado, ensure_ascii=False)
                     mensaje_plano = unicodedata.normalize('NFC', resumen_whatsapp_plano)
                     mensaje_plano_url = quote(mensaje_plano, safe='', encoding='utf-8')
-                    st.link_button("Abrir WhatsApp Web", "https://web.whatsapp.com/")
-                    st.link_button("Abrir con texto (sin emojis)", f"https://wa.me/?text={mensaje_plano_url}")
+                    botones_html = f"""
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin:6px 0;">
+                      <a href="https://web.whatsapp.com/" target="_blank"
+                         style="background:#22c55e;color:#ffffff;text-decoration:none;padding:8px 14px;border-radius:6px;font-weight:600;">
+                        Abrir WhatsApp Web
+                      </a>
+                      <a href="https://wa.me/?text={mensaje_plano_url}" target="_blank"
+                         style="background:#6b7280;color:#ffffff;text-decoration:none;padding:8px 14px;border-radius:6px;font-weight:600;">
+                        Abrir con texto (sin emojis)
+                      </a>
+                    </div>
+                    """
+                    st.markdown(botones_html, unsafe_allow_html=True)
+                    mensaje_html = html.escape(mensaje_normalizado)
                     components.html(
                         f"""
                         <div style="margin-top: 6px;">
+                          <textarea id="waCopyText" style="position:absolute; left:-9999px;">{mensaje_html}</textarea>
                           <button id="waCopyBtn"
                             style="background-color:#2563eb;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
                             Copiar mensaje
@@ -651,10 +665,9 @@ def main():
                         </div>
                         <div id="waCopyStatus" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
                         <script>
-                          const mensajeWhatsapp = {mensaje_json};
-                          const mensajeClipboard = mensajeWhatsapp.replace(/\n/g, '\\r\\n');
                           const copyBtn = document.getElementById('waCopyBtn');
                           const statusEl = document.getElementById('waCopyStatus');
+                          const textEl = document.getElementById('waCopyText');
 
                           function setStatus(texto) {{
                             statusEl.textContent = texto;
@@ -662,11 +675,12 @@ def main():
 
                           async function copiarMensaje() {{
                             try {{
+                              const texto = textEl.value.replace(/\\n/g, '\\r\\n');
                               if (navigator.clipboard && window.isSecureContext) {{
-                                await navigator.clipboard.writeText(mensajeClipboard);
+                                await navigator.clipboard.writeText(texto);
                               }} else {{
                                 const temp = document.createElement('textarea');
-                                temp.value = mensajeClipboard;
+                                temp.value = texto;
                                 temp.setAttribute('readonly', '');
                                 temp.style.position = 'absolute';
                                 temp.style.left = '-9999px';
