@@ -658,6 +658,7 @@ def main():
                         <script>
                           const mensajeWhatsapp = {mensaje_json};
                           const mensajeWhatsappPlano = {mensaje_json_plano};
+                          const mensajeClipboard = mensajeWhatsapp.replace(/\n/g, '\\r\\n');
                           const copyBtn = document.getElementById('waCopyBtn');
                           const statusEl = document.getElementById('waCopyStatus');
 
@@ -668,10 +669,10 @@ def main():
                           async function copiarMensaje() {{
                             try {{
                               if (navigator.clipboard && window.isSecureContext) {{
-                                await navigator.clipboard.writeText(mensajeWhatsapp);
+                                await navigator.clipboard.writeText(mensajeClipboard);
                               }} else {{
                                 const temp = document.createElement('textarea');
-                                temp.value = mensajeWhatsapp;
+                                temp.value = mensajeClipboard;
                                 temp.setAttribute('readonly', '');
                                 temp.style.position = 'absolute';
                                 temp.style.left = '-9999px';
