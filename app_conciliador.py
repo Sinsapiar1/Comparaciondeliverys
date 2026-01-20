@@ -9,6 +9,7 @@ import sys
 import os
 import json
 import re
+import unicodedata
 from urllib.parse import quote
 from datetime import datetime
 from pathlib import Path
@@ -481,14 +482,15 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
         diferencia = row['Diferencia']
         estado = row['Estado']
         emoji_estado = emojis_estado.get(estado, 'ℹ️')
-        detalle = f"{emoji_estado} {codigo} {nombre}: se pidio {solicitado} / se envian {cargado}"
+        lineas.append(f"{emoji_estado} {codigo} {nombre}")
+        detalle_partes = [f"Pedido: {solicitado}", f"Envio: {cargado}"]
         if diferencia < 0:
-            detalle += f" | faltan {formatear_cantidad(abs(diferencia))}"
+            detalle_partes.append(f"Faltan: {formatear_cantidad(abs(diferencia))}")
         elif diferencia > 0:
-            detalle += f" | excedente {formatear_cantidad(diferencia)}"
-        lineas.append(detalle)
+            detalle_partes.append(f"Excedente: {formatear_cantidad(diferencia)}")
+        lineas.append(f"   " + " | ".join(detalle_partes))
         if row['Sustituido por'] != '---':
-            lineas.append(f"  ↪ Sustituido por: {row['Sustituido por']}")
+            lineas.append(f"   -> Sustituido por: {row['Sustituido por']}")
 
     lineas.append("")
     lineas.append(f"Totalidad de envio: {kpis['cumplimiento_general']:.1%}")
@@ -627,7 +629,8 @@ def main():
                 with st.expander("📲 Resumen para WhatsApp", expanded=False):
                     st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
                     st.caption("Copia y pega este resumen en WhatsApp.")
-                    mensaje_url = quote(resumen_whatsapp)
+                    mensaje_normalizado = unicodedata.normalize('NFC', resumen_whatsapp)
+                    mensaje_url = quote(mensaje_normalizado, safe='', encoding='utf-8')
                     wa_url = f"https://wa.me/?text={mensaje_url}"
                     st.link_button("Abrir WhatsApp Web", wa_url)
                     st.caption("Se abrira WhatsApp Web para elegir el chat.")
