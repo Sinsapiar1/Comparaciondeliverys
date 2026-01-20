@@ -9,6 +9,7 @@ import sys
 import os
 import json
 import re
+from urllib.parse import quote
 from datetime import datetime
 from pathlib import Path
 
@@ -456,10 +457,11 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
     """Genera un resumen simple para copiar y pegar en WhatsApp."""
     fecha = datetime.now().strftime('%d/%m/%Y')
     lineas = [
+        "📦 Conciliacion de carga",
         f"Obra: {metadata['nombre']}",
         f"Orden: {metadata['hoja_carga']}",
         f"Fecha: {fecha}",
-        "",
+        "---------------------------",
         "Productos:"
     ]
 
@@ -469,8 +471,15 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
         nombre = row['Nombre del producto']
         solicitado = formatear_cantidad(row['Cantidad Solicitada'])
         cargado = formatear_cantidad(row['Cantidad_Cargada'])
-        alerta = " ⚠️" if row['Diferencia'] != 0 else ""
-        lineas.append(f"- {codigo} {nombre}: se pidio {solicitado} se envian {cargado}{alerta}")
+        diferencia = row['Diferencia']
+        detalle = f"- {codigo} {nombre}: se pidio {solicitado} / se envian {cargado}"
+        if diferencia < 0:
+            detalle += f" ⚠️ faltan {formatear_cantidad(abs(diferencia))}"
+        elif diferencia > 0:
+            detalle += f" ⚠️ excedente {formatear_cantidad(diferencia)}"
+        lineas.append(detalle)
+        if row['Sustituido por'] != '---':
+            lineas.append(f"  ↪ Sustituido por: {row['Sustituido por']}")
 
     lineas.append("")
     lineas.append(f"Totalidad de envio: {kpis['cumplimiento_general']:.1%}")
@@ -609,6 +618,10 @@ def main():
                 with st.expander("📲 Resumen para WhatsApp", expanded=False):
                     st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
                     st.caption("Copia y pega este resumen en WhatsApp.")
+                    mensaje_url = quote(resumen_whatsapp)
+                    wa_url = f"https://wa.me/?text={mensaje_url}"
+                    st.link_button("Abrir WhatsApp Web", wa_url)
+                    st.caption("Se abrira WhatsApp Web para elegir el chat.")
                 
                 # Información adicional
                 with st.expander("ℹ️ Información del Informe", expanded=False):
