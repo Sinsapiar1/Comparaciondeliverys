@@ -10,6 +10,7 @@ import os
 import json
 import re
 import unicodedata
+from urllib.parse import quote
 import streamlit.components.v1 as components
 from datetime import datetime
 from pathlib import Path
@@ -637,27 +638,20 @@ def main():
                     mensaje_normalizado = unicodedata.normalize('NFC', resumen_whatsapp)
                     mensaje_json = json.dumps(mensaje_normalizado, ensure_ascii=False)
                     mensaje_plano = unicodedata.normalize('NFC', resumen_whatsapp_plano)
-                    mensaje_json_plano = json.dumps(mensaje_plano, ensure_ascii=False)
+                    mensaje_plano_url = quote(mensaje_plano, safe='', encoding='utf-8')
+                    st.link_button("Abrir WhatsApp Web", "https://web.whatsapp.com/")
+                    st.link_button("Abrir con texto (sin emojis)", f"https://wa.me/?text={mensaje_plano_url}")
                     components.html(
                         f"""
-                        <div style="margin-top: 6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <div style="margin-top: 6px;">
                           <button id="waCopyBtn"
                             style="background-color:#2563eb;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
                             Copiar mensaje
-                          </button>
-                          <button onclick="abrirWhatsappWeb()"
-                            style="background-color:#22c55e;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
-                            Abrir WhatsApp Web
-                          </button>
-                          <button onclick="abrirWhatsappConTextoPlano()"
-                            style="background-color:#6b7280;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
-                            Abrir con texto (sin emojis)
                           </button>
                         </div>
                         <div id="waCopyStatus" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
                         <script>
                           const mensajeWhatsapp = {mensaje_json};
-                          const mensajeWhatsappPlano = {mensaje_json_plano};
                           const mensajeClipboard = mensajeWhatsapp.replace(/\n/g, '\\r\\n');
                           const copyBtn = document.getElementById('waCopyBtn');
                           const statusEl = document.getElementById('waCopyStatus');
@@ -688,19 +682,10 @@ def main():
                             }}
                           }}
 
-                          function abrirWhatsappWeb() {{
-                            window.open('https://web.whatsapp.com/', '_blank');
-                          }}
-
-                          function abrirWhatsappConTextoPlano() {{
-                            const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsappPlano);
-                            window.open(url, '_blank');
-                          }}
-
                           copyBtn.addEventListener('click', copiarMensaje);
                         </script>
                         """,
-                        height=120
+                        height=90
                     )
                     st.caption("Si quieres emojis, copia y pega; el enlace sin emojis es compatible.")
                 
