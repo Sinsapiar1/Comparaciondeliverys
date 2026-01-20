@@ -628,28 +628,72 @@ def main():
                 resumen_whatsapp = generar_resumen_whatsapp(informe_final, kpis, metadata)
                 with st.expander("📲 Resumen para WhatsApp", expanded=False):
                     st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
-                    st.caption("Copia y pega este resumen en WhatsApp.")
+                    st.caption("Para conservar emojis, usa copiar y pegar.")
                     mensaje_normalizado = unicodedata.normalize('NFC', resumen_whatsapp)
-                    mensaje_json = json.dumps(mensaje_normalizado)
+                    mensaje_json = json.dumps(mensaje_normalizado, ensure_ascii=False)
                     components.html(
                         f"""
-                        <div style="margin-top: 6px;">
-                          <button onclick="abrirWhatsapp()"
+                        <div style="margin-top: 6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                          <button id="waCopyBtn"
+                            style="background-color:#2563eb;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
+                            Copiar mensaje
+                          </button>
+                          <button onclick="abrirWhatsappWeb()"
                             style="background-color:#22c55e;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
                             Abrir WhatsApp Web
                           </button>
+                          <button onclick="abrirWhatsappConTexto()"
+                            style="background-color:#6b7280;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
+                            Abrir con texto (experimental)
+                          </button>
                         </div>
+                        <div id="waCopyStatus" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
                         <script>
                           const mensajeWhatsapp = {mensaje_json};
-                          function abrirWhatsapp() {{
+                          const copyBtn = document.getElementById('waCopyBtn');
+                          const statusEl = document.getElementById('waCopyStatus');
+
+                          function setStatus(texto) {{
+                            statusEl.textContent = texto;
+                          }}
+
+                          async function copiarMensaje() {{
+                            try {{
+                              if (navigator.clipboard && window.isSecureContext) {{
+                                await navigator.clipboard.writeText(mensajeWhatsapp);
+                              }} else {{
+                                const temp = document.createElement('textarea');
+                                temp.value = mensajeWhatsapp;
+                                temp.setAttribute('readonly', '');
+                                temp.style.position = 'absolute';
+                                temp.style.left = '-9999px';
+                                document.body.appendChild(temp);
+                                temp.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(temp);
+                              }}
+                              setStatus('Copiado ✅');
+                              setTimeout(() => setStatus(''), 1500);
+                            }} catch (e) {{
+                              setStatus('No se pudo copiar. Usa seleccionar y copiar manual.');
+                            }}
+                          }}
+
+                          function abrirWhatsappWeb() {{
+                            window.open('https://web.whatsapp.com/', '_blank');
+                          }}
+
+                          function abrirWhatsappConTexto() {{
                             const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsapp);
                             window.open(url, '_blank');
                           }}
+
+                          copyBtn.addEventListener('click', copiarMensaje);
                         </script>
                         """,
-                        height=64
+                        height=120
                     )
-                    st.caption("Se abrira WhatsApp Web para elegir el chat.")
+                    st.caption("Si el enlace con texto reemplaza emojis, copia y pega.")
                 
                 # Información adicional
                 with st.expander("ℹ️ Información del Informe", expanded=False):
