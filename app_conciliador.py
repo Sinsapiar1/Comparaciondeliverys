@@ -634,13 +634,20 @@ def main():
                     components.html(
                         f"""
                         <div style="margin-top: 6px;">
-                          <button onclick="window.open('https://wa.me/?text=' + encodeURIComponent({mensaje_json}), '_blank')"
+                          <button onclick="abrirWhatsapp()"
                             style="background-color:#22c55e;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
                             Abrir WhatsApp Web
                           </button>
                         </div>
+                        <script>
+                          const mensajeWhatsapp = {mensaje_json};
+                          function abrirWhatsapp() {{
+                            const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsapp);
+                            window.open(url, '_blank');
+                          }}
+                        </script>
                         """,
-                        height=48
+                        height=64
                     )
                     st.caption("Se abrira WhatsApp Web para elegir el chat.")
                 
