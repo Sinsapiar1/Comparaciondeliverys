@@ -466,17 +466,26 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
     ]
 
     productos_df = informe_df[informe_df['Cantidad Solicitada'] > 0].copy()
+    emojis_estado = {
+        'Completo': '✅',
+        'Pendiente': '🔴',
+        'Incompleto': '🟡',
+        'Excedente': '🔵',
+        'No Solicitado': '⚪'
+    }
     for _, row in productos_df.iterrows():
         codigo = row['Código de artículo']
         nombre = row['Nombre del producto']
         solicitado = formatear_cantidad(row['Cantidad Solicitada'])
         cargado = formatear_cantidad(row['Cantidad_Cargada'])
         diferencia = row['Diferencia']
-        detalle = f"- {codigo} {nombre}: se pidio {solicitado} / se envian {cargado}"
+        estado = row['Estado']
+        emoji_estado = emojis_estado.get(estado, 'ℹ️')
+        detalle = f"{emoji_estado} {codigo} {nombre}: se pidio {solicitado} / se envian {cargado}"
         if diferencia < 0:
-            detalle += f" ⚠️ faltan {formatear_cantidad(abs(diferencia))}"
+            detalle += f" | faltan {formatear_cantidad(abs(diferencia))}"
         elif diferencia > 0:
-            detalle += f" ⚠️ excedente {formatear_cantidad(diferencia)}"
+            detalle += f" | excedente {formatear_cantidad(diferencia)}"
         lineas.append(detalle)
         if row['Sustituido por'] != '---':
             lineas.append(f"  ↪ Sustituido por: {row['Sustituido por']}")
