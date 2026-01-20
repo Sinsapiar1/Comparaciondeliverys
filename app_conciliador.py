@@ -10,7 +10,7 @@ import os
 import json
 import re
 import unicodedata
-from urllib.parse import quote
+import streamlit.components.v1 as components
 from datetime import datetime
 from pathlib import Path
 
@@ -630,9 +630,18 @@ def main():
                     st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
                     st.caption("Copia y pega este resumen en WhatsApp.")
                     mensaje_normalizado = unicodedata.normalize('NFC', resumen_whatsapp)
-                    mensaje_url = quote(mensaje_normalizado, safe='', encoding='utf-8')
-                    wa_url = f"https://wa.me/?text={mensaje_url}"
-                    st.link_button("Abrir WhatsApp Web", wa_url)
+                    mensaje_json = json.dumps(mensaje_normalizado)
+                    components.html(
+                        f"""
+                        <div style="margin-top: 6px;">
+                          <button onclick="window.open('https://wa.me/?text=' + encodeURIComponent({mensaje_json}), '_blank')"
+                            style="background-color:#22c55e;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
+                            Abrir WhatsApp Web
+                          </button>
+                        </div>
+                        """,
+                        height=48
+                    )
                     st.caption("Se abrira WhatsApp Web para elegir el chat.")
                 
                 # Información adicional
