@@ -454,11 +454,12 @@ def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
     
     return html
 
-def generar_resumen_whatsapp(informe_df, kpis, metadata):
+def generar_resumen_whatsapp(informe_df, kpis, metadata, usar_emojis=True):
     """Genera un resumen simple para copiar y pegar en WhatsApp."""
     fecha = datetime.now().strftime('%d/%m/%Y')
+    encabezado = "📦 Conciliacion de carga" if usar_emojis else "Conciliacion de carga"
     lineas = [
-        "📦 Conciliacion de carga",
+        encabezado,
         f"Obra: {metadata['nombre']}",
         f"Orden: {metadata['hoja_carga']}",
         f"Fecha: {fecha}",
@@ -467,12 +468,12 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
     ]
 
     productos_df = informe_df[informe_df['Cantidad Solicitada'] > 0].copy()
-    emojis_estado = {
-        'Completo': '✅',
-        'Pendiente': '🔴',
-        'Incompleto': '🟡',
-        'Excedente': '🔵',
-        'No Solicitado': '⚪'
+    etiquetas_estado = {
+        'Completo': '✅' if usar_emojis else '[OK]',
+        'Pendiente': '🔴' if usar_emojis else '[PEND]',
+        'Incompleto': '🟡' if usar_emojis else '[INC]',
+        'Excedente': '🔵' if usar_emojis else '[EXC]',
+        'No Solicitado': '⚪' if usar_emojis else '[NS]'
     }
     for _, row in productos_df.iterrows():
         codigo = row['Código de artículo']
@@ -481,8 +482,8 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata):
         cargado = formatear_cantidad(row['Cantidad_Cargada'])
         diferencia = row['Diferencia']
         estado = row['Estado']
-        emoji_estado = emojis_estado.get(estado, 'ℹ️')
-        lineas.append(f"{emoji_estado} {codigo} {nombre}")
+        etiqueta_estado = etiquetas_estado.get(estado, 'ℹ️' if usar_emojis else '[INFO]')
+        lineas.append(f"{etiqueta_estado} {codigo} {nombre}")
         detalle_partes = [f"Pedido: {solicitado}", f"Envio: {cargado}"]
         if diferencia < 0:
             detalle_partes.append(f"Faltan: {formatear_cantidad(abs(diferencia))}")
@@ -625,12 +626,15 @@ def main():
                 
                 st.caption(f"📄 Archivo: {nombre_archivo}")
 
-                resumen_whatsapp = generar_resumen_whatsapp(informe_final, kpis, metadata)
+                resumen_whatsapp = generar_resumen_whatsapp(informe_final, kpis, metadata, usar_emojis=True)
+                resumen_whatsapp_plano = generar_resumen_whatsapp(informe_final, kpis, metadata, usar_emojis=False)
                 with st.expander("📲 Resumen para WhatsApp", expanded=False):
                     st.text_area("Mensaje listo para copiar", value=resumen_whatsapp, height=220)
                     st.caption("Para conservar emojis, usa copiar y pegar.")
                     mensaje_normalizado = unicodedata.normalize('NFC', resumen_whatsapp)
                     mensaje_json = json.dumps(mensaje_normalizado, ensure_ascii=False)
+                    mensaje_plano = unicodedata.normalize('NFC', resumen_whatsapp_plano)
+                    mensaje_json_plano = json.dumps(mensaje_plano, ensure_ascii=False)
                     components.html(
                         f"""
                         <div style="margin-top: 6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -642,14 +646,15 @@ def main():
                             style="background-color:#22c55e;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
                             Abrir WhatsApp Web
                           </button>
-                          <button onclick="abrirWhatsappConTexto()"
+                          <button onclick="abrirWhatsappConTextoPlano()"
                             style="background-color:#6b7280;border:none;color:white;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;">
-                            Abrir con texto (experimental)
+                            Abrir con texto (sin emojis)
                           </button>
                         </div>
                         <div id="waCopyStatus" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
                         <script>
                           const mensajeWhatsapp = {mensaje_json};
+                          const mensajeWhatsappPlano = {mensaje_json_plano};
                           const copyBtn = document.getElementById('waCopyBtn');
                           const statusEl = document.getElementById('waCopyStatus');
 
@@ -683,8 +688,8 @@ def main():
                             window.open('https://web.whatsapp.com/', '_blank');
                           }}
 
-                          function abrirWhatsappConTexto() {{
-                            const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsapp);
+                          function abrirWhatsappConTextoPlano() {{
+                            const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsappPlano);
                             window.open(url, '_blank');
                           }}
 
@@ -693,7 +698,7 @@ def main():
                         """,
                         height=120
                     )
-                    st.caption("Si el enlace con texto reemplaza emojis, copia y pega.")
+                    st.caption("Si quieres emojis, copia y pega; el enlace sin emojis es compatible.")
                 
                 # Información adicional
                 with st.expander("ℹ️ Información del Informe", expanded=False):
