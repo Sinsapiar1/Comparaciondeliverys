@@ -469,20 +469,21 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata, usar_emojis=True):
 
     productos_df = informe_df[informe_df['Cantidad Solicitada'] > 0].copy()
     etiquetas_estado = {
-        'Completo': '✅' if usar_emojis else '[OK]',
-        'Pendiente': '🔴' if usar_emojis else '[!!]',
-        'Incompleto': '🟡' if usar_emojis else '[~]',
-        'Excedente': '🔵' if usar_emojis else '[+]',
-        'No Solicitado': '⚪' if usar_emojis else '[?]'
+        'Completo': '✅' if usar_emojis else ':) OK',
+        'Pendiente': '🔴' if usar_emojis else ':( PEND',
+        'Incompleto': '🟡' if usar_emojis else ':/ INC',
+        'Excedente': '🔵' if usar_emojis else ':+ EXC',
+        'No Solicitado': '⚪' if usar_emojis else ':? NS'
     }
-    for _, row in productos_df.iterrows():
+    total_items = len(productos_df)
+    for idx, (_, row) in enumerate(productos_df.iterrows()):
         codigo = row['Código de artículo']
         nombre = row['Nombre del producto']
         solicitado = formatear_cantidad(row['Cantidad Solicitada'])
         cargado = formatear_cantidad(row['Cantidad_Cargada'])
         diferencia = row['Diferencia']
         estado = row['Estado']
-        etiqueta_estado = etiquetas_estado.get(estado, 'ℹ️' if usar_emojis else '[i]')
+        etiqueta_estado = etiquetas_estado.get(estado, 'ℹ️' if usar_emojis else ':i INFO')
         lineas.append(f"{etiqueta_estado} {codigo} {nombre}")
         detalle_partes = [f"Pedido: {solicitado}", f"Envio: {cargado}"]
         if diferencia < 0:
@@ -492,6 +493,8 @@ def generar_resumen_whatsapp(informe_df, kpis, metadata, usar_emojis=True):
         lineas.append(f"   " + " | ".join(detalle_partes))
         if row['Sustituido por'] != '---':
             lineas.append(f"   -> Sustituido por: {row['Sustituido por']}")
+        if idx < total_items - 1:
+            lineas.append("")
 
     lineas.append("")
     lineas.append(f"Totalidad de envio: {kpis['cumplimiento_general']:.1%}")
