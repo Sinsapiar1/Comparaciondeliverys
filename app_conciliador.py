@@ -461,9 +461,15 @@ def generar_html_impresion(informe_df, kpis, metadata):
     """Genera HTML profesional optimizado para impresión"""
     fecha_actual = datetime.now().strftime('%d/%m/%Y %H:%M')
     
+    # Ordenar por estado: Incompleto, Pendiente, Completo, Excedente, No Solicitado
+    orden_estados = {'Incompleto': 1, 'Pendiente': 2, 'Completo': 3, 'Excedente': 4, 'No Solicitado': 5, 'Revisar': 6}
+    informe_ordenado = informe_df.copy()
+    informe_ordenado['_orden'] = informe_ordenado['Estado'].map(orden_estados).fillna(99)
+    informe_ordenado = informe_ordenado.sort_values('_orden').drop(columns=['_orden'])
+    
     # Generar filas de la tabla
     filas_html = ""
-    for idx, row in informe_df.iterrows():
+    for idx, row in informe_ordenado.iterrows():
         # Colores según estado (optimizados para impresión)
         if row['Estado'] == 'Pendiente':
             bg_color = '#FFE0E0'
@@ -520,7 +526,8 @@ def generar_html_impresion(informe_df, kpis, metadata):
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <title>Informe de Conciliación - {metadata['nombre']} - {metadata['hoja_carga']}</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>Informe de Conciliacion - {metadata['nombre']} - {metadata['hoja_carga']}</title>
         <style>
             * {{
                 margin: 0;
@@ -555,8 +562,9 @@ def generar_html_impresion(informe_df, kpis, metadata):
             
             .header-left h1 {{
                 color: #1F497D;
-                font-size: 22px;
+                font-size: 24px;
                 margin-bottom: 5px;
+                letter-spacing: 1px;
             }}
             
             .header-left .subtitle {{
@@ -747,31 +755,54 @@ def generar_html_impresion(informe_df, kpis, metadata):
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                background: #1F497D;
+                background: linear-gradient(135deg, #1F497D 0%, #2E6EA6 100%);
                 color: white;
                 border: none;
-                padding: 12px 24px;
-                border-radius: 6px;
+                padding: 14px 28px;
+                border-radius: 8px;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 15px;
                 font-weight: 600;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                box-shadow: 0 4px 15px rgba(31, 73, 125, 0.4);
                 z-index: 1000;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }}
             
             .print-button:hover {{
-                background: #163a5f;
+                background: linear-gradient(135deg, #163a5f 0%, #1F497D 100%);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(31, 73, 125, 0.5);
+            }}
+            
+            .print-button:active {{
+                transform: translateY(0);
+            }}
+            
+            .print-icon {{
+                width: 18px;
+                height: 18px;
+                fill: currentColor;
             }}
         </style>
     </head>
     <body>
-        <button class="print-button no-print" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="print-button no-print" onclick="window.print()">
+            <svg class="print-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9V2h12v7"></path>
+                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path>
+                <path d="M6 14h12v8H6z"></path>
+            </svg>
+            Imprimir
+        </button>
         
         <div class="page">
             <!-- Encabezado -->
             <div class="header">
                 <div class="header-left">
-                    <h1>📊 Informe de Conciliación de Carga</h1>
+                    <h1>INFORME DE CONCILIACION DE CARGA</h1>
                     <div class="subtitle">Reporte detallado de cumplimiento de pedido</div>
                 </div>
                 <div class="header-right">
@@ -833,7 +864,7 @@ def generar_html_impresion(informe_df, kpis, metadata):
             
             <!-- Tabla de detalle -->
             <div class="tabla-container">
-                <h2>📦 Detalle de Artículos</h2>
+                <h2>Detalle de Articulos</h2>
                 <table>
                     <thead>
                         <tr>
@@ -1055,38 +1086,64 @@ def main():
                     
                     # Usar components.html para evitar conflictos con React de Streamlit
                     components.html(
-                        f"""
-                        <button id="btnImprimir" style="
-                            background-color: #1F497D;
-                            color: white;
-                            border: none;
-                            padding: 0.6rem 1rem;
-                            border-radius: 0.5rem;
-                            cursor: pointer;
-                            font-size: 14px;
-                            font-weight: 500;
-                            width: 100%;
-                            font-family: 'Source Sans Pro', sans-serif;
-                        ">
-                            🖨️ Imprimir Informe
+                        """
+                        <style>
+                            .btn-imprimir {
+                                background: linear-gradient(135deg, #1F497D 0%, #2E6EA6 100%);
+                                color: white;
+                                border: none;
+                                padding: 0.6rem 1.2rem;
+                                border-radius: 0.5rem;
+                                cursor: pointer;
+                                font-size: 14px;
+                                font-weight: 600;
+                                width: 100%;
+                                font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 8px;
+                                transition: all 0.2s ease;
+                                box-shadow: 0 2px 8px rgba(31, 73, 125, 0.3);
+                            }
+                            .btn-imprimir:hover {
+                                background: linear-gradient(135deg, #163a5f 0%, #1F497D 100%);
+                                transform: translateY(-1px);
+                                box-shadow: 0 4px 12px rgba(31, 73, 125, 0.4);
+                            }
+                            .btn-imprimir:active {
+                                transform: translateY(0);
+                            }
+                            .btn-imprimir svg {
+                                width: 16px;
+                                height: 16px;
+                            }
+                        </style>
+                        <button id="btnImprimir" class="btn-imprimir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9V2h12v7"></path>
+                                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path>
+                                <path d="M6 14h12v8H6z"></path>
+                            </svg>
+                            Imprimir Informe
                         </button>
                         <script>
-                            document.getElementById('btnImprimir').addEventListener('click', function() {{
-                                var htmlBase64 = "{html_base64}";
+                            document.getElementById('btnImprimir').addEventListener('click', function() {
+                                var htmlBase64 = '""" + html_base64 + """';
                                 var htmlContent = atob(htmlBase64);
                                 
                                 var ventana = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-                                if (ventana) {{
+                                if (ventana) {
                                     ventana.document.write(htmlContent);
                                     ventana.document.close();
                                     ventana.focus();
-                                }} else {{
+                                } else {
                                     alert('Por favor permite las ventanas emergentes para imprimir el informe.');
-                                }}
-                            }});
+                                }
+                            });
                         </script>
                         """,
-                        height=45
+                        height=50
                     )
                 
                 st.caption(f"📄 Archivo: {nombre_archivo}")
