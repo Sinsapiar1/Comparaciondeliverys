@@ -494,23 +494,23 @@ def generar_html_impresion(informe_df, kpis, metadata):
         else:
             diferencia_str = f"{diferencia:,}"
         
-        # Mostrar sustitución si existe
+        # Mostrar sustitucion si existe
         sustitucion = row['Sustituido por'] if row['Sustituido por'] != '---' else ''
-        sustitucion_html = f'<div style="font-size: 10px; color: #666; margin-top: 2px;">↳ {sustitucion}</div>' if sustitucion else ''
+        sustitucion_html = f'<div style="font-size: 11px; color: #666; margin-top: 3px;">Sustituido: {sustitucion}</div>' if sustitucion else ''
         
         filas_html += f"""
         <tr style="background-color: {bg_color}; border-left: {border_left};">
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; font-weight: 500;">{row['Código de artículo']}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd;">
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; font-weight: 500;">{row['Código de artículo']}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd;">
                 {row['Nombre del producto']}
                 {sustitucion_html}
             </td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: center; font-weight: bold;">{row['Estado']}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad Solicitada']):,}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad_Cargada']):,}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 500;">{diferencia_str}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{row['% Cumplimiento']:.1%}</td>
-            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; font-size: 10px; color: #666;">{row['Pallets']}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; text-align: center; font-weight: bold;">{row['Estado']}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad Solicitada']):,}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad_Cargada']):,}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 500;">{diferencia_str}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; text-align: right;">{row['% Cumplimiento']:.1%}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #ddd; font-size: 11px; color: #555;">{row['Pallets']}</td>
         </tr>
         """
     
@@ -686,7 +686,7 @@ def generar_html_impresion(informe_df, kpis, metadata):
             table {{
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 10px;
+                font-size: 12px;
             }}
             
             thead tr {{
@@ -695,10 +695,10 @@ def generar_html_impresion(informe_df, kpis, metadata):
             }}
             
             thead th {{
-                padding: 10px 6px;
+                padding: 10px 8px;
                 text-align: left;
                 font-weight: 600;
-                font-size: 10px;
+                font-size: 11px;
             }}
             
             thead th.right {{ text-align: right; }}
@@ -837,7 +837,7 @@ def generar_html_impresion(informe_df, kpis, metadata):
                     <div class="value">{kpis['cumplimiento_general']:.1%}</div>
                 </div>
                 <div class="kpi-card pendientes">
-                    <div class="label">Artículos Pendientes</div>
+                    <div class="label">Articulos Pendientes</div>
                     <div class="value">{kpis['articulos_pendientes']}</div>
                 </div>
             </div>
@@ -868,7 +868,7 @@ def generar_html_impresion(informe_df, kpis, metadata):
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 10%;">Código</th>
+                            <th style="width: 10%;">Codigo</th>
                             <th style="width: 28%;">Producto</th>
                             <th class="center" style="width: 10%;">Estado</th>
                             <th class="right" style="width: 10%;">Solicitado</th>
@@ -884,10 +884,10 @@ def generar_html_impresion(informe_df, kpis, metadata):
                 </table>
             </div>
             
-            <!-- Pie de página -->
+            <!-- Pie de pagina -->
             <div class="footer">
-                <div>Informe generado automáticamente - Sistema de Conciliación de Cargas</div>
-                <div>Página 1</div>
+                <div>Informe generado automaticamente - Sistema de Conciliacion de Cargas</div>
+                <div>Pagina 1</div>
             </div>
         </div>
         
