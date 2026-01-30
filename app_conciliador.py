@@ -1053,40 +1053,40 @@ def main():
                     # Codificar el HTML en base64 para pasarlo al JavaScript
                     html_base64 = base64.b64encode(html_impresion.encode('utf-8')).decode('utf-8')
                     
-                    # Botón que abre ventana de impresión
-                    st.markdown(
+                    # Usar components.html para evitar conflictos con React de Streamlit
+                    components.html(
                         f"""
-                        <button onclick="abrirVentanaImpresion()" style="
+                        <button id="btnImprimir" style="
                             background-color: #1F497D;
                             color: white;
                             border: none;
-                            padding: 0.5rem 1rem;
+                            padding: 0.6rem 1rem;
                             border-radius: 0.5rem;
                             cursor: pointer;
                             font-size: 14px;
                             font-weight: 500;
                             width: 100%;
-                            margin-top: 3px;
+                            font-family: 'Source Sans Pro', sans-serif;
                         ">
                             🖨️ Imprimir Informe
                         </button>
                         <script>
-                            function abrirVentanaImpresion() {{
+                            document.getElementById('btnImprimir').addEventListener('click', function() {{
                                 var htmlBase64 = "{html_base64}";
                                 var htmlContent = atob(htmlBase64);
                                 
                                 var ventana = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-                                ventana.document.write(htmlContent);
-                                ventana.document.close();
-                                
-                                // Esperar a que cargue y enfocar
-                                ventana.onload = function() {{
+                                if (ventana) {{
+                                    ventana.document.write(htmlContent);
+                                    ventana.document.close();
                                     ventana.focus();
-                                }};
-                            }}
+                                }} else {{
+                                    alert('Por favor permite las ventanas emergentes para imprimir el informe.');
+                                }}
+                            }});
                         </script>
                         """,
-                        unsafe_allow_html=True
+                        height=45
                     )
                 
                 st.caption(f"📄 Archivo: {nombre_archivo}")
