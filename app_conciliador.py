@@ -11,6 +11,7 @@ import json
 import re
 import html
 import unicodedata
+import base64
 from urllib.parse import quote
 import streamlit.components.v1 as components
 from datetime import datetime
@@ -456,6 +457,419 @@ def generar_cuerpo_html_outlook(informe_df, kpis, metadata):
     
     return html
 
+def generar_html_impresion(informe_df, kpis, metadata):
+    """Genera HTML profesional optimizado para impresión"""
+    fecha_actual = datetime.now().strftime('%d/%m/%Y %H:%M')
+    
+    # Generar filas de la tabla
+    filas_html = ""
+    for idx, row in informe_df.iterrows():
+        # Colores según estado (optimizados para impresión)
+        if row['Estado'] == 'Pendiente':
+            bg_color = '#FFE0E0'
+            border_left = '4px solid #D32F2F'
+        elif row['Estado'] == 'Incompleto':
+            bg_color = '#FFF8E1'
+            border_left = '4px solid #FFA000'
+        elif row['Estado'] == 'Completo':
+            bg_color = '#E8F5E9'
+            border_left = '4px solid #388E3C'
+        elif row['Estado'] in ['Excedente', 'No Solicitado']:
+            bg_color = '#E3F2FD'
+            border_left = '4px solid #1976D2'
+        else:
+            bg_color = '#FFFFFF'
+            border_left = '4px solid #9E9E9E'
+        
+        # Formatear diferencia con signo
+        diferencia = int(row['Diferencia'])
+        if diferencia > 0:
+            diferencia_str = f"+{diferencia:,}"
+        else:
+            diferencia_str = f"{diferencia:,}"
+        
+        # Mostrar sustitución si existe
+        sustitucion = row['Sustituido por'] if row['Sustituido por'] != '---' else ''
+        sustitucion_html = f'<div style="font-size: 10px; color: #666; margin-top: 2px;">↳ {sustitucion}</div>' if sustitucion else ''
+        
+        filas_html += f"""
+        <tr style="background-color: {bg_color}; border-left: {border_left};">
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; font-weight: 500;">{row['Código de artículo']}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd;">
+                {row['Nombre del producto']}
+                {sustitucion_html}
+            </td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: center; font-weight: bold;">{row['Estado']}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad Solicitada']):,}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{int(row['Cantidad_Cargada']):,}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 500;">{diferencia_str}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; text-align: right;">{row['% Cumplimiento']:.1%}</td>
+            <td style="padding: 8px 6px; border-bottom: 1px solid #ddd; font-size: 10px; color: #666;">{row['Pallets']}</td>
+        </tr>
+        """
+    
+    # Contar estados para el resumen
+    estados_count = informe_df['Estado'].value_counts().to_dict()
+    completos = estados_count.get('Completo', 0)
+    incompletos = estados_count.get('Incompleto', 0)
+    pendientes = estados_count.get('Pendiente', 0)
+    excedentes = estados_count.get('Excedente', 0) + estados_count.get('No Solicitado', 0)
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Informe de Conciliación - {metadata['nombre']} - {metadata['hoja_carga']}</title>
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            
+            body {{
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 11px;
+                line-height: 1.4;
+                color: #333;
+                background: #fff;
+            }}
+            
+            .page {{
+                width: 100%;
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            
+            /* Encabezado */
+            .header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                border-bottom: 3px solid #1F497D;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }}
+            
+            .header-left h1 {{
+                color: #1F497D;
+                font-size: 22px;
+                margin-bottom: 5px;
+            }}
+            
+            .header-left .subtitle {{
+                color: #666;
+                font-size: 12px;
+            }}
+            
+            .header-right {{
+                text-align: right;
+            }}
+            
+            .header-right .fecha {{
+                font-size: 11px;
+                color: #666;
+            }}
+            
+            /* Info de obra */
+            .obra-info {{
+                display: flex;
+                gap: 40px;
+                background: #f8f9fa;
+                padding: 15px 20px;
+                border-radius: 6px;
+                margin-bottom: 20px;
+                border-left: 4px solid #1F497D;
+            }}
+            
+            .obra-info .item label {{
+                display: block;
+                font-size: 10px;
+                color: #666;
+                text-transform: uppercase;
+                margin-bottom: 3px;
+            }}
+            
+            .obra-info .item span {{
+                font-size: 14px;
+                font-weight: 600;
+                color: #1F497D;
+            }}
+            
+            /* KPIs */
+            .kpis {{
+                display: flex;
+                gap: 15px;
+                margin-bottom: 25px;
+            }}
+            
+            .kpi-card {{
+                flex: 1;
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+            }}
+            
+            .kpi-card.solicitado {{ background: #E3F2FD; border: 1px solid #BBDEFB; }}
+            .kpi-card.cargado {{ background: #E8F5E9; border: 1px solid #C8E6C9; }}
+            .kpi-card.cumplimiento {{ background: #FFF8E1; border: 1px solid #FFECB3; }}
+            .kpi-card.pendientes {{ background: #FFEBEE; border: 1px solid #FFCDD2; }}
+            
+            .kpi-card .label {{
+                font-size: 10px;
+                color: #666;
+                text-transform: uppercase;
+                margin-bottom: 5px;
+            }}
+            
+            .kpi-card .value {{
+                font-size: 24px;
+                font-weight: bold;
+            }}
+            
+            .kpi-card.solicitado .value {{ color: #1565C0; }}
+            .kpi-card.cargado .value {{ color: #2E7D32; }}
+            .kpi-card.cumplimiento .value {{ color: #F57C00; }}
+            .kpi-card.pendientes .value {{ color: #C62828; }}
+            
+            /* Resumen de estados */
+            .estados-resumen {{
+                display: flex;
+                gap: 20px;
+                margin-bottom: 20px;
+                padding: 10px 15px;
+                background: #fafafa;
+                border-radius: 4px;
+            }}
+            
+            .estado-item {{
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 11px;
+            }}
+            
+            .estado-dot {{
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
+            }}
+            
+            .estado-dot.completo {{ background: #388E3C; }}
+            .estado-dot.incompleto {{ background: #FFA000; }}
+            .estado-dot.pendiente {{ background: #D32F2F; }}
+            .estado-dot.excedente {{ background: #1976D2; }}
+            
+            /* Tabla */
+            .tabla-container {{
+                margin-bottom: 20px;
+            }}
+            
+            .tabla-container h2 {{
+                font-size: 14px;
+                color: #1F497D;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 2px solid #E0E0E0;
+            }}
+            
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10px;
+            }}
+            
+            thead tr {{
+                background: #1F497D;
+                color: white;
+            }}
+            
+            thead th {{
+                padding: 10px 6px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 10px;
+            }}
+            
+            thead th.right {{ text-align: right; }}
+            thead th.center {{ text-align: center; }}
+            
+            /* Pie de página */
+            .footer {{
+                margin-top: 30px;
+                padding-top: 15px;
+                border-top: 1px solid #ddd;
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                color: #888;
+            }}
+            
+            /* Estilos de impresión */
+            @media print {{
+                body {{
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }}
+                
+                .page {{
+                    padding: 10px;
+                    max-width: 100%;
+                }}
+                
+                .no-print {{
+                    display: none !important;
+                }}
+                
+                table {{
+                    page-break-inside: auto;
+                }}
+                
+                tr {{
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                }}
+                
+                thead {{
+                    display: table-header-group;
+                }}
+                
+                @page {{
+                    size: A4 landscape;
+                    margin: 10mm;
+                }}
+            }}
+            
+            /* Botón de imprimir (solo en pantalla) */
+            .print-button {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #1F497D;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+            }}
+            
+            .print-button:hover {{
+                background: #163a5f;
+            }}
+        </style>
+    </head>
+    <body>
+        <button class="print-button no-print" onclick="window.print()">🖨️ Imprimir</button>
+        
+        <div class="page">
+            <!-- Encabezado -->
+            <div class="header">
+                <div class="header-left">
+                    <h1>📊 Informe de Conciliación de Carga</h1>
+                    <div class="subtitle">Reporte detallado de cumplimiento de pedido</div>
+                </div>
+                <div class="header-right">
+                    <div class="fecha">Generado: {fecha_actual}</div>
+                </div>
+            </div>
+            
+            <!-- Info de obra -->
+            <div class="obra-info">
+                <div class="item">
+                    <label>Obra</label>
+                    <span>{metadata['nombre']}</span>
+                </div>
+                <div class="item">
+                    <label>Hoja de Carga</label>
+                    <span>{metadata['hoja_carga']}</span>
+                </div>
+            </div>
+            
+            <!-- KPIs -->
+            <div class="kpis">
+                <div class="kpi-card solicitado">
+                    <div class="label">Unidades Solicitadas</div>
+                    <div class="value">{kpis['total_solicitado']:,.0f}</div>
+                </div>
+                <div class="kpi-card cargado">
+                    <div class="label">Unidades Cargadas</div>
+                    <div class="value">{kpis['total_cargado']:,.0f}</div>
+                </div>
+                <div class="kpi-card cumplimiento">
+                    <div class="label">% Cumplimiento</div>
+                    <div class="value">{kpis['cumplimiento_general']:.1%}</div>
+                </div>
+                <div class="kpi-card pendientes">
+                    <div class="label">Artículos Pendientes</div>
+                    <div class="value">{kpis['articulos_pendientes']}</div>
+                </div>
+            </div>
+            
+            <!-- Resumen de estados -->
+            <div class="estados-resumen">
+                <div class="estado-item">
+                    <div class="estado-dot completo"></div>
+                    <span><strong>{completos}</strong> Completos</span>
+                </div>
+                <div class="estado-item">
+                    <div class="estado-dot incompleto"></div>
+                    <span><strong>{incompletos}</strong> Incompletos</span>
+                </div>
+                <div class="estado-item">
+                    <div class="estado-dot pendiente"></div>
+                    <span><strong>{pendientes}</strong> Pendientes</span>
+                </div>
+                <div class="estado-item">
+                    <div class="estado-dot excedente"></div>
+                    <span><strong>{excedentes}</strong> Excedentes/No Solicitados</span>
+                </div>
+            </div>
+            
+            <!-- Tabla de detalle -->
+            <div class="tabla-container">
+                <h2>📦 Detalle de Artículos</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">Código</th>
+                            <th style="width: 28%;">Producto</th>
+                            <th class="center" style="width: 10%;">Estado</th>
+                            <th class="right" style="width: 10%;">Solicitado</th>
+                            <th class="right" style="width: 10%;">Cargado</th>
+                            <th class="right" style="width: 10%;">Diferencia</th>
+                            <th class="right" style="width: 8%;">% Cumpl.</th>
+                            <th style="width: 14%;">Pallets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filas_html}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pie de página -->
+            <div class="footer">
+                <div>Informe generado automáticamente - Sistema de Conciliación de Cargas</div>
+                <div>Página 1</div>
+            </div>
+        </div>
+        
+        <script>
+            // Auto-focus para que funcione Ctrl+P inmediatamente
+            window.focus();
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+
 def generar_resumen_whatsapp(informe_df, kpis, metadata, usar_emojis=True):
     """Genera un resumen simple para copiar y pegar en WhatsApp."""
     fecha = datetime.now().strftime('%d/%m/%Y')
@@ -621,13 +1035,59 @@ def main():
                     # Solo descarga, sin guardar en repositorio
                     st.info("ℹ️ Informe generado solo para descarga (no se guardó en repositorio)")
                 
-                # Botón de descarga
-                st.download_button(
-                    label="⬇️ Descargar Informe en Excel", 
-                    data=excel_bytes,
-                    file_name=nombre_archivo,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                # Botones de descarga e impresión
+                col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 2])
+                
+                with col_btn1:
+                    st.download_button(
+                        label="⬇️ Descargar Excel", 
+                        data=excel_bytes,
+                        file_name=nombre_archivo,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                
+                with col_btn2:
+                    # Generar HTML para impresión
+                    html_impresion = generar_html_impresion(informe_final, kpis, metadata)
+                    
+                    # Codificar el HTML en base64 para pasarlo al JavaScript
+                    html_base64 = base64.b64encode(html_impresion.encode('utf-8')).decode('utf-8')
+                    
+                    # Botón que abre ventana de impresión
+                    st.markdown(
+                        f"""
+                        <button onclick="abrirVentanaImpresion()" style="
+                            background-color: #1F497D;
+                            color: white;
+                            border: none;
+                            padding: 0.5rem 1rem;
+                            border-radius: 0.5rem;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 500;
+                            width: 100%;
+                            margin-top: 3px;
+                        ">
+                            🖨️ Imprimir Informe
+                        </button>
+                        <script>
+                            function abrirVentanaImpresion() {{
+                                var htmlBase64 = "{html_base64}";
+                                var htmlContent = atob(htmlBase64);
+                                
+                                var ventana = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                                ventana.document.write(htmlContent);
+                                ventana.document.close();
+                                
+                                // Esperar a que cargue y enfocar
+                                ventana.onload = function() {{
+                                    ventana.focus();
+                                }};
+                            }}
+                        </script>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 
                 st.caption(f"📄 Archivo: {nombre_archivo}")
 
